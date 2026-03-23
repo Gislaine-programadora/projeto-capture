@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Photo Booth</title>
+  <style>
+    body { font-family: Arial; text-align:center; background: linear-gradient(45deg,#6a11cb,#2575fc); color:white; }
+    input,button { padding:10px; margin:5px; border-radius:8px; border:none; }
+    button { background:#ffcc00; cursor:pointer; }
+  </style>
+</head>
+<body>
+  <h1>📸 Photo Booth</h1>
+  <input id="email" placeholder="Email"><br>
+  <input id="password" type="password" placeholder="Senha"><br>
+  <button onclick="login()">Entrar</button>
+
+<script>
+function login(){
+  const email = document.getElementById('email').value;
+  const password = document.getElementById('password').value;
+
+  if(email === 'admin@gmail.com' && password === '1234'){
+    window.location.href = 'admin.html';
+  } else {
+    localStorage.setItem('user', email);
+    window.location.href = 'camera.html';
+  }
+}
+</script>
+</body>
+</html>

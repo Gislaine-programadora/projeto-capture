@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Painel Admin</title>
+
+  <style>
+    body {
+      font-family: Arial;
+      background: #111;
+      color: white;
+      text-align: center;
+      margin: 0;
+      padding: 20px;
+    }
+
+    h2 {
+      margin-bottom: 10px;
+    }
+
+    .top-bar {
+      margin-bottom: 20px;
+    }
+
+    .logout {
+      background: #00ffcc;
+      padding: 10px 15px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    #gallery {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 20px;
+    }
+
+    .card {
+      background: #1e1e1e;
+      padding: 12px;
+      border-radius: 15px;
+      width: 230px;
+      box-shadow: 0 0 12px rgba(0,255,200,0.4);
+      transition: 0.3s;
+    }
+
+    .card:hover {
+      transform: scale(1.03);
+    }
+
+    .card img {
+      width: 100%;
+      border-radius: 10px;
+      border: 4px solid #00ffcc;
+    }
+
+    .buttons {
+      margin-top: 10px;
+    }
+
+    button {
+      padding: 8px 12px;
+      margin: 5px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    .download {
+      background: #ffcc00;
+    }
+
+    .delete {
+      background: #ff4444;
+      color: white;
+    }
+  </style>
+</head>
+
+<body>
+
+<h2>📂 Painel Admin</h2>
+
+<div class="top-bar">
+  <button class="logout" onclick="logout()">Sair</button>
+</div>
+
+<div id="gallery"></div>
+
+<script>
+
+function loadPhotos(){
+  fetch('/photos')
+    .then(res => res.json())
+    .then(files => {
+      const gallery = document.getElementById('gallery');
+      gallery.innerHTML = '';
+
+      files.forEach(file => {
+
+        const card = document.createElement('div');
+        card.className = 'card';
+
+        const img = document.createElement('img');
+        img.src = 'uploads/' + file;
+
+        const buttons = document.createElement('div');
+        buttons.className = 'buttons';
+
+        // DOWNLOAD
+        const downloadLink = document.createElement('a');
+        downloadLink.href = img.src;
+        downloadLink.download = file;
+        downloadLink.innerHTML = '<button class="download">Download</button>';
+
+        // DELETE
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'delete';
+        deleteBtn.innerText = 'Excluir';
+
+       deleteBtn.onclick = () => {
+  if(confirm('Excluir esta foto?')){
+    fetch('/delete',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ file })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if(data.success){
+        alert('✅ Excluído com sucesso!');
+        loadPhotos(); // 🔥 recarrega lista
+      } else {
+        alert('❌ Não foi possível excluir');
+      }
+    })
+    .catch(() => alert('Erro ao excluir'));
+  }
+};
+
+        buttons.appendChild(downloadLink);
+        buttons.appendChild(deleteBtn);
+
+        card.appendChild(img);
+        card.appendChild(buttons);
+
+        gallery.appendChild(card);
+      });
+    });
+}
+
+// 🚪 sair
+function logout(){
+  window.location.href = 'index.html';
+}
+
+// carregar ao abrir
+loadPhotos();
+
+</script>
+
+</body>
+</html>
