@@ -1,90 +1,61 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Câmera</title>
-
-  <!-- QRCode -->
+  <title>Photo Booth</title>
   <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
-
   <style>
     body {
       text-align: center;
       font-family: Arial;
       background: #111;
       color: white;
-      margin: 0;
-      padding: 20px;
     }
-
     video {
       width: 450px;
-      height: 350px;
       border-radius: 20px;
       margin-top: 10px;
-      object-fit: cover;
-      box-shadow: 0 10px 30px rgba(0,255,204,0.3);
+      transform: scaleX(-1);
     }
-
-    canvas {
-      display: none;
-    }
-
+    canvas { display: none; }
     button {
-      padding: 12px 20px;
+      padding: 10px 20px;
       margin: 10px;
       border: none;
       border-radius: 10px;
-      background: linear-gradient(45deg, #00ffcc, #00cc99);
+      background: #00ffcc;
       cursor: pointer;
       font-weight: bold;
-      font-size: 16px;
-      color: #000;
-      transition: all 0.3s;
+      font-size: 15px;
     }
-
-    button:hover {
-      transform: scale(1.05);
-      box-shadow: 0 5px 15px rgba(0,255,204,0.5);
-    }
-
     #countdown {
-      font-size: 50px;
-      margin-top: 10px;
+      font-size: 80px;
       font-weight: bold;
       color: #00ffcc;
-      text-shadow: 0 0 20px #00ffcc;
+      min-height: 90px;
     }
-
     #preview img {
       margin-top: 10px;
       border-radius: 15px;
       border: 5px solid #00ffcc;
-      box-shadow: 0 10px 30px rgba(0,255,204,0.5);
-      max-width: 400px;
-    }
-
-    #status {
-      margin: 10px;
-      padding: 10px;
-      border-radius: 10px;
-      background: rgba(0,255,204,0.1);
-      border: 1px solid #00ffcc;
+      width: 320px;
     }
   </style>
 </head>
 
 <body>
 
-<h2>📸 Tire sua foto</h2>
-<div id="status">🔄 Carregando câmera...</div>
+<h2>📸 Prepare seu melhor sorriso!</h2>
+<p style="color:#aaa">Clique no botão e a contagem de 3 segundos começa</p>
 
-<video id="video" autoplay playsinline muted></video>
+<video id="video" autoplay playsinline></video>
 <canvas id="canvas"></canvas>
 
 <div id="countdown"></div>
 
-<button onclick="startCapture()">📷 Tirar Foto</button>
-<button onclick="logout()">🚪 Sair</button>
+<div>
+  <button id="btnCapture" onclick="startCapture()">📷 Tirar Foto</button>
+  <button onclick="logout()" style="background:#ff6b6b">Sair</button>
+</div>
 
 <div id="preview"></div>
 
@@ -92,261 +63,113 @@
 const video = document.getElementById('video');
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
-const status = document.getElementById('status');
 
-// 🔥 CÂMERA HD COM MELHOR ILUMINAÇÃO AUTOMÁTICA
-const constraints = {
-  video: {
-    width: { ideal: 1280, max: 1920 },
-    height: { ideal: 720, max: 1080 },
-    facingMode: 'user',
-    // 🚀 CONFIGURAÇÕES DE LUZ AUTOMÁTICAS
-    torch: true,
-    focusMode: 'continuous',
-    exposureMode: 'auto',
-    // 💡 MELHORAR CONDIÇÕES DE LUZ
-    brightness: 1.2,
-    contrast: 1.1
-  }
-};
+// Guarda a imagem final globalmente (evita corte no dataset)
+let currentImage = null;
 
-// Inicializar câmera com tratamento de erro
-async function initCamera() {
-  try {
-    status.textContent = '🔄 Inicializando câmera HD...';
-    const stream = await navigator.mediaDevices.getUserMedia(constraints);
-    video.srcObject = stream;
-    
-    video.onloadedmetadata = () => {
-      status.textContent = `✅ Câmera HD ${video.videoWidth}x${video.videoHeight}`;
-      video.play();
-    };
-  } catch (err) {
-    // Fallback para configurações mais simples se HD falhar
-    console.warn('HD falhou, tentando qualidade média:', err);
-    const fallbackConstraints = {
-      video: {
-        width: { ideal: 640 },
-        height: { ideal: 480 },
-        facingMode: 'user'
-      }
-    };
-    
-    navigator.mediaDevices.getUserMedia(fallbackConstraints)
-      .then(stream => {
-        video.srcObject = stream;
-        status.textContent = '✅ Câmera ativa (qualidade média)';
-      })
-      .catch(() => {
-        status.textContent = '❌ Erro na câmera. Verifique permissões.';
-      });
-  }
-}
+navigator.mediaDevices.getUserMedia({
+  video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' }
+}).then(stream => {
+  video.srcObject = stream;
+}).catch(err => {
+  alert('Erro ao acessar câmera: ' + err.message);
+});
 
-// Iniciar câmera automaticamente
-initCamera();
-
-// ⏱️ contagem regressiva
-function startCapture(){
+function startCapture() {
+  document.getElementById('btnCapture').disabled = true;
+  document.getElementById('preview').innerHTML = '';
   let count = 3;
   const cd = document.getElementById('countdown');
-  status.textContent = '⏳ Preparando foto...';
-
   cd.innerText = count;
-  cd.style.color = '#ff4444';
 
-  const interval = setInterval(()=>{
+  const interval = setInterval(() => {
     count--;
-    if (count === 2) cd.style.color = '#ffaa00';
-    if (count === 1) cd.style.color = '#00ff00';
-    cd.innerText = count;
-
-    if(count < 0){
+    cd.innerText = count > 0 ? count : '📸';
+    if (count < 0) {
       clearInterval(interval);
       cd.innerText = '';
-      cd.style.color = '#00ffcc';
       takePhoto();
     }
-  },1000);
+  }, 1000);
 }
 
-// 📸 TIRAR FOTO COM CORREÇÃO AVANÇADA DE LUZ
-function takePhoto(){
+function takePhoto() {
   canvas.width = video.videoWidth;
   canvas.height = video.videoHeight;
-  
-  status.textContent = '📸 Processando imagem...';
 
-  // 💡 CORREÇÃO PROFISSIONAL DE LUZ (MUITO MELHOR)
-  ctx.filter = `
-    brightness(1.8) 
-    contrast(1.3) 
-    saturate(1.2) 
-    hue-rotate(0deg) 
-    sepia(0.1)
-  `;
-  
-  // Desenhar imagem com correção
-  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-  // 🌟 ADICIONAL: MELHORAR ÁREAS ESCURAS
-  ctx.filter = 'brightness(1.1)';
-  ctx.globalCompositeOperation = 'screen';
-  ctx.fillRect(0, 0, canvas.width, canvas.height * 0.3); // Topo mais claro
-  ctx.globalCompositeOperation = 'source-over';
-
-  // 🟦 Moldura premium
-  const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-  gradient.addColorStop(0, '#00ffcc');
-  gradient.addColorStop(1, '#0099aa');
-  
-  ctx.strokeStyle = gradient;
-  ctx.lineWidth = 50;
-  ctx.lineJoin = 'round';
-  ctx.strokeRect(10, 10, canvas.width-20, canvas.height-20);
-
-  const fileId = Date.now();
-  const qrText = `Foto ID: ${fileId}`;
-
-  // 🔳 QR Code
-  QRCode.toCanvas(document.createElement('canvas'), qrText, { 
-    width: 200,
-    margin: 2,
-    color: {
-      dark: '#000',
-      light: '#00ffcc88'
-    }
-  }, function (err, qrCanvas) {
-    if (err) console.error(err);
-
-    // Posicionar QR com sombra
-    ctx.shadowColor = '#00ffcc';
-    ctx.shadowBlur = 20;
-    ctx.drawImage(qrCanvas, canvas.width - 200, canvas.height - 200, 160, 160);
-    ctx.shadowBlur = 0;
-
-    const finalImage = canvas.toDataURL('image/png', 0.95);
-
-    showPreview(finalImage);
-  });
-}
-
-// 👀 Preview
-function showPreview(image){
-  const preview = document.getElementById('preview');
-  status.textContent = '👀 Visualize sua foto';
-
-  preview.innerHTML = `
-    <img src="${image}" width="400"><br><br>
-    <button onclick="savePhoto('${image}')">💾 Salvar Foto</button>
-    <button onclick="startCapture()">🔄 Refazer</button>
-  `;
-}
-
-// 📸 NOVA FUNÇÃO takePhoto() - CORREÇÃO ULTRA HD
-function takePhoto(){
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
-  
-  status.textContent = '📸 Otimizando luz HD...';
-
-  // 🚀 PROCESSAMENTO PROFISSIONAL EM 3 ETAPAS
+  // ✅ Espelha corretamente
   ctx.save();
-  
-  // ETAPA 1: Captura base com exposição alta
-  ctx.filter = `
-    brightness(2.2) 
-    contrast(1.5) 
-    saturate(1.4) 
-    exposure(1.8)
-  `;
+  ctx.translate(canvas.width, 0);
+  ctx.scale(-1, 1);
+  ctx.filter = "brightness(1.4) contrast(1.2) saturate(1.3)";
   ctx.drawImage(video, 0, 0);
-  
-  // ETAPA 2: Lift shadows (salva áreas escuras)
-  ctx.filter = 'brightness(1.3) contrast(1.1)';
-  ctx.globalCompositeOperation = 'screen';
-  ctx.fillStyle = 'rgba(255,255,255,0.25)';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  
-  // ETAPA 3: Boost médio-tonos (detalhes da pele/rosto)
-  ctx.globalCompositeOperation = 'soft-light';
-  ctx.fillStyle = 'rgba(255,255,255,0.15)';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  
-  ctx.globalCompositeOperation = 'source-over';
-  ctx.filter = 'none';
-  
-  // 🟦 Moldura premium (mantenha seu código)
-  const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-  gradient.addColorStop(0, '#00ffcc');
-  gradient.addColorStop(1, '#0099aa');
-  ctx.strokeStyle = gradient;
+  ctx.restore();
+  ctx.filter = "none";
+
+  // Moldura
+  ctx.strokeStyle = '#00ffcc';
   ctx.lineWidth = 50;
-  ctx.lineJoin = 'round';
-  ctx.strokeRect(10, 10, canvas.width-20, canvas.height-20);
-  
-  // QR Code (mantenha seu código)
-  const fileId = Date.now();
-  const qrText = `Foto ID: ${fileId}`;
-  
-  QRCode.toCanvas(document.createElement('canvas'), qrText, { 
-    width: 200,
-    margin: 2,
-    color: { dark: '#000', light: '#00ffcc88' }
-  }, function (err, qrCanvas) {
-    if (err) console.error(err);
-    
-    ctx.shadowColor = '#00ffcc';
-    ctx.shadowBlur = 20;
-    ctx.drawImage(qrCanvas, canvas.width - 200, canvas.height - 200, 160, 160);
-    ctx.shadowBlur = 0;
-    
-    const finalImage = canvas.toDataURL('image/png', 1.0); // Qualidade máxima
-    showPreview(finalImage);
-    ctx.restore();
+  ctx.strokeRect(0, 0, canvas.width, canvas.height);
+
+  const qrText = `Foto ID: ${Date.now()}`;
+  QRCode.toCanvas(document.createElement('canvas'), qrText, function(err, qrCanvas) {
+    if (!err) {
+      ctx.drawImage(qrCanvas, canvas.width - 180, canvas.height - 180, 150, 150);
+    }
+
+    // ✅ Guarda em variável global, não no dataset
+    currentImage = canvas.toDataURL('image/jpeg', 0.92);
+    showPreview(currentImage);
+    document.getElementById('btnCapture').disabled = false;
   });
 }
 
-// 💾 Salvar
-function savePhoto(image){
-  fetch('/upload',{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({
-      image,
-      email: localStorage.getItem('user'),
-      timestamp: Date.now()
-    })
-  })
-  .then(response => response.json())
-  .then(()=>{
-    status.textContent = '✅ Foto salva com QR Code!';
-    document.getElementById('preview').innerHTML = '';
-    setTimeout(() => {
-      status.textContent = `✅ Câmera HD ${video.videoWidth}x${video.videoHeight}`;
-    }, 3000);
-  })
-  .catch(err => {
-    status.textContent = '❌ Erro ao salvar. Tente novamente.';
-    console.error(err);
-  });
+function showPreview(image) {
+  const preview = document.getElementById('preview');
+  preview.innerHTML = `
+    <img src="${image}"><br>
+    <button onclick="savePhoto()">💾 Salvar</button>
+    <button onclick="startCapture()" style="background:#f0a500">🔄 Refazer</button>
+  `;
 }
 
-// 🚪 Logout
-function logout(){
-  if (video.srcObject) {
-    video.srcObject.getTracks().forEach(track => track.stop());
+function savePhoto() {
+  if (!currentImage) return;
+
+  // ✅ Converte base64 para Blob antes de enviar
+  const byteString = atob(currentImage.split(',')[1]);
+  const mimeString = currentImage.split(',')[0].split(':')[1].split(';')[0];
+  const ab = new ArrayBuffer(byteString.length);
+  const ia = new Uint8Array(ab);
+  for (let i = 0; i < byteString.length; i++) {
+    ia[i] = byteString.charCodeAt(i);
   }
+  const blob = new Blob([ab], { type: mimeString });
+
+  const formData = new FormData();
+  formData.append('photo', blob, `foto-${Date.now()}.jpg`);
+  formData.append('email', localStorage.getItem('user') || 'visitante');
+
+  fetch('/upload', {
+    method: 'POST',
+    body: formData
+  }).then(res => {
+    if (res.ok) {
+      alert('✅ Foto salva com sucesso!');
+      document.getElementById('preview').innerHTML = '';
+      currentImage = null;
+    } else {
+      alert('Erro ao salvar: ' + res.status);
+    }
+  }).catch(err => {
+    alert('Erro de conexão: ' + err.message);
+  });
+}
+
+function logout() {
   localStorage.removeItem('user');
   window.location.href = 'index.html';
 }
-
-// Limpar ao fechar
-window.addEventListener('beforeunload', () => {
-  if (video.srcObject) {
-    video.srcObject.getTracks().forEach(track => track.stop());
-  }
-});
 </script>
 
 </body>

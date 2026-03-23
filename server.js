@@ -3,6 +3,8 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const bodyParser = require('body-parser');
+const multer = require('multer');
+const upload = multer({ dest: 'uploads/' });
 
 const app = express();
 const PORT = 3000;
@@ -14,14 +16,28 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 if (!fs.existsSync('uploads')) fs.mkdirSync('uploads');
 
 // SAVE
-app.post('/upload', (req, res) => {
-  const { image, email } = req.body;
-  const base64Data = image.replace(/^data:image\/png;base64,/, "");
-  const filename = `${Date.now()}_${email}.png`;
-  const filePath = path.join(__dirname, 'uploads', filename);
+app.post('/upload', upload.single('photo'), (req, res) => {
+  try {
+    const file = req.file;
+    const email = req.body.email || 'user';
 
-  fs.writeFileSync(filePath, base64Data, 'base64');
-  res.json({ success: true, filename });
+    if (!file) {
+      return res.status(400).json({ error: 'Arquivo não enviado' });
+    }
+
+    // novo nome do arquivo
+    const newFilename = `${Date.now()}_${email}.jpg`;
+    const newPath = path.join(__dirname, 'uploads', newFilename);
+
+    // renomeia o arquivo salvo pelo multer
+    fs.renameSync(file.path, newPath);
+
+    res.json({ success: true, filename: newFilename });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erro ao salvar imagem' });
+  }
 });
 
 // LIST
